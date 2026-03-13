@@ -1,0 +1,5 @@
+langgraph
+playwright
+beautifulsoup4
+requests
+Pillow
