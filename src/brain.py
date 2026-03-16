@@ -3,6 +3,7 @@ import re
 import json
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import JsonOutputParser
+from utils.parse_action import parse_ai_output
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -32,32 +33,65 @@ class APAFlowBrain:
 
     def decide_action(self, goal, dom_text):
         prompt = f"""
-    你是一个网页自动化专家。请根据提供的精简 DOM 结构，找到实现用户目标所需的 CSS 选择器。
+你是一个专业的网页自动化 Agent，负责从 DOM 结构中生成可以执行的 CSS Selector。
 
-    用户目标: {goal}
-    精简 DOM: {dom_text}
+任务：
+根据用户目标和提供的精简 DOM，生成实现任务所需的操作步骤。
 
-    请严格仅返回 JSON，格式如下：
-    {{
-        "selector": "准确的CSS选择器",
-        "action": "fill 或 click",
-        "value": "如果是fill，请提供输入内容；如果是click，此处为空",
-        "description": "步骤描述（如：点击热榜第1条）"
-    }}
+用户目标：
+{goal}
 
-    注意事项：
-    1. 仅输出 JSON，**不要添加任何解释、文本、换行或注释**。
-    2. 所有字符串必须用双引号。
-    3. 示例：
-    {{
-        "selector": "#username",
-        "action": "fill",
-        "value": "admin"
-    }}
-    /no_think"""
+精简 DOM：
+{dom_text}
+
+请严格返回 JSON 数组，每个元素代表一个操作步骤。
+
+返回格式：
+[
+  {{
+    "selector": "CSS选择器",
+    "action": "click 或 fill",
+    "value": "输入内容（仅当 action=fill 时填写，否则为空字符串）",
+    "description": "简短步骤描述"
+  }}
+]
+
+规则：
+1. **只返回 JSON 数组，不要输出任何解释、文字、Markdown 或代码块。**
+2. 所有字符串必须使用 **双引号**。
+3. 如果任务包含多个步骤（例如“依次点击”“逐个点击”），请返回多个对象。
+4. selector 必须是 **稳定且唯一的 CSS 选择器**。
+5. 优先使用：
+   - id
+   - name
+   - class
+   - data-* 属性
+   - 结构定位（如 nth-child）
+6. 如果列表元素需要区分顺序，请使用 `nth-child()`。
+7. 如果 action 为 click，value 必须为 ""。
+8. description 要简短明确。
+
+示例：
+
+[
+  {{
+    "selector": "tbody tr:nth-child(1) td:nth-child(2) a",
+    "action": "click",
+    "value": "",
+    "description": "点击第1条热榜"
+  }},
+  {{
+    "selector": "tbody tr:nth-child(2) td:nth-child(2) a",
+    "action": "click",
+    "value": "",
+    "description": "点击第2条热榜"
+  }}
+]
+"""
         # parser = JsonOutputParser()
         # chain = self.llm | parser
         raw_output = self.llm.invoke(prompt)
         text_output = raw_output.content
-        return extract_json(raw_output=text_output)
+        print(f"{raw_output.content=}")
+        return parse_ai_output(raw_output=text_output)
 
