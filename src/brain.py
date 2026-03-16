@@ -41,7 +41,8 @@ class APAFlowBrain:
     {{
         "selector": "准确的CSS选择器",
         "action": "fill 或 click",
-        "value": "如果是fill，请提供输入内容；如果是click，此处为空"
+        "value": "如果是fill，请提供输入内容；如果是click，此处为空",
+        "description": "步骤描述（如：点击热榜第1条）"
     }}
 
     注意事项：
